@@ -8,6 +8,7 @@ import logging
 from src.geometry.vector2d import Vector2D
 from src.core.image_processor import ImageProcessor
 from src.core.polygon_simplifier import PolygonSimplifier
+from src.core.triangulator import Triangulator
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,8 @@ class CollisionMapper:
         alpha_threshold: int = 128,
         epsilon: float = 2.0,
         max_vertices: int = 8,
-        min_area: float = 10.0
+        min_area: float = 10.0,
+        triangulate: bool = True
     ) -> None:
         """
         Initialize collision mapper.
@@ -35,17 +37,21 @@ class CollisionMapper:
             epsilon: Douglas-Peucker simplification tolerance
             max_vertices: Maximum vertices per polygon (3-8)
             min_area: Minimum polygon area in square pixels
+            triangulate: Whether to triangulate polygons (Godot-style)
         """
         self.image_processor = ImageProcessor(alpha_threshold=alpha_threshold)
         self.polygon_simplifier = PolygonSimplifier(
             epsilon=epsilon,
             max_vertices=max_vertices
         )
+        self.triangulator = Triangulator(method="earcut")
         self.min_area = min_area
+        self.triangulate = triangulate
         
         logger.info(
             f"CollisionMapper initialized: alpha_threshold={alpha_threshold}, "
-            f"epsilon={epsilon}, max_vertices={max_vertices}, min_area={min_area}"
+            f"epsilon={epsilon}, max_vertices={max_vertices}, min_area={min_area}, "
+            f"triangulate={triangulate}"
         )
     
     def generate_collision_polygons(
@@ -76,13 +82,20 @@ class CollisionMapper:
         for i, contour in enumerate(contours):
             try:
                 # Simplify contour to polygon
-                vertices = self.polygon_simplifier.simplify_contour(contour)
+                # Skip vertex limit if we're going to triangulate anyway
+                vertices = self.polygon_simplifier.simplify_contour(
+                    contour, 
+                    skip_vertex_limit=self.triangulate
+                )
                 
                 # Merge close vertices
                 vertices = self.polygon_simplifier.merge_close_vertices(vertices)
                 
                 # Validate polygon
-                if not self.polygon_simplifier.validate_polygon(vertices):
+                if not self.polygon_simplifier.validate_polygon(
+                    vertices, 
+                    skip_vertex_limit=self.triangulate
+                ):
                     logger.warning(f"Contour {i} failed validation, skipping")
                     continue
                 
@@ -95,21 +108,32 @@ class CollisionMapper:
                     )
                     continue
                 
-                # If polygon has > max_vertices, split into triangles
-                if len(vertices) > self.polygon_simplifier.max_vertices:
-                    logger.info(
-                        f"Polygon {i} has {len(vertices)} vertices, "
-                        f"splitting into triangles"
+                # Triangulate polygon (Godot-style)
+                if self.triangulate:
+                    logger.debug(
+                        f"Triangulating polygon {i} with {len(vertices)} vertices"
                     )
-                    triangles = self.polygon_simplifier.split_into_triangles(vertices)
+                    triangles = self.triangulator.triangulate_polygon(vertices)
                     
                     for triangle in triangles:
                         polygon_data = [v.to_list() for v in triangle]
                         all_polygons.append(polygon_data)
                 else:
-                    # Convert vertices to list format
-                    polygon_data = [v.to_list() for v in vertices]
-                    all_polygons.append(polygon_data)
+                    # Keep as single polygon (old behavior)
+                    if len(vertices) > self.polygon_simplifier.max_vertices:
+                        logger.info(
+                            f"Polygon {i} has {len(vertices)} vertices, "
+                            f"splitting into triangles"
+                        )
+                        triangles = self.polygon_simplifier.split_into_triangles(vertices)
+                        
+                        for triangle in triangles:
+                            polygon_data = [v.to_list() for v in triangle]
+                            all_polygons.append(polygon_data)
+                    else:
+                        # Convert vertices to list format
+                        polygon_data = [v.to_list() for v in vertices]
+                        all_polygons.append(polygon_data)
                 
             except Exception as e:
                 logger.error(f"Failed to process contour {i}: {e}", exc_info=True)

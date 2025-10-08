@@ -39,12 +39,17 @@ class PolygonSimplifier:
         self.epsilon = epsilon
         self.max_vertices = max_vertices
     
-    def simplify_contour(self, contour: np.ndarray) -> List[Vector2D]:
+    def simplify_contour(
+        self, 
+        contour: np.ndarray,
+        skip_vertex_limit: bool = False
+    ) -> List[Vector2D]:
         """
         Simplify OpenCV contour to polygon with limited vertices.
         
         Args:
             contour: OpenCV contour array (Nx1x2)
+            skip_vertex_limit: If True, skip max_vertices enforcement (for triangulation)
             
         Returns:
             List of Vector2D vertices
@@ -59,22 +64,23 @@ class PolygonSimplifier:
         epsilon = self.epsilon
         simplified = cv2.approxPolyDP(contour, epsilon, closed=True)
         
-        # If still too many vertices, increase epsilon
-        max_iterations = 10
-        iteration = 0
-        while len(simplified) > self.max_vertices and iteration < max_iterations:
-            epsilon *= 1.5
-            simplified = cv2.approxPolyDP(contour, epsilon, closed=True)
-            iteration += 1
-        
-        if len(simplified) > self.max_vertices:
-            logger.warning(
-                f"Could not reduce to {self.max_vertices} vertices "
-                f"after {max_iterations} iterations. Got {len(simplified)} vertices."
-            )
-            # Take every nth point to reduce count
-            n = len(simplified) // self.max_vertices
-            simplified = simplified[::n][:self.max_vertices]
+        # If still too many vertices and not skipping limit, increase epsilon
+        if not skip_vertex_limit:
+            max_iterations = 10
+            iteration = 0
+            while len(simplified) > self.max_vertices and iteration < max_iterations:
+                epsilon *= 1.5
+                simplified = cv2.approxPolyDP(contour, epsilon, closed=True)
+                iteration += 1
+            
+            if len(simplified) > self.max_vertices:
+                logger.warning(
+                    f"Could not reduce to {self.max_vertices} vertices "
+                    f"after {max_iterations} iterations. Got {len(simplified)} vertices."
+                )
+                # Take every nth point to reduce count
+                n = len(simplified) // self.max_vertices
+                simplified = simplified[::n][:self.max_vertices]
         
         # Convert to Vector2D list
         vertices = []
@@ -199,18 +205,27 @@ class PolygonSimplifier:
         
         return merged
     
-    def validate_polygon(self, vertices: List[Vector2D]) -> bool:
+    def validate_polygon(
+        self, 
+        vertices: List[Vector2D],
+        skip_vertex_limit: bool = False
+    ) -> bool:
         """
         Validate that polygon is acceptable.
         
         Args:
             vertices: Polygon vertices
+            skip_vertex_limit: If True, skip max_vertices check
             
         Returns:
             True if valid, False otherwise
         """
-        # Must have 3-8 vertices
-        if not 3 <= len(vertices) <= self.max_vertices:
+        # Must have at least 3 vertices
+        if len(vertices) < 3:
+            return False
+        
+        # Check max vertices only if not skipping
+        if not skip_vertex_limit and len(vertices) > self.max_vertices:
             return False
         
         # Check for duplicate vertices
