@@ -1,30 +1,32 @@
 # Copilot Instructions - Python 2D Sprite Collision Polygon Generator
 
 ## Project Overview
-Automated tool for generating collision polygon mappings from PNG sprite images. The tool analyzes sprite transparency to create optimized collision shapes (triangles/polygons with ≤8 vertices) and outputs both JSON collision data and visual preview images.
+Automated tool for generating collision polygon mappings from PNG sprite images using **Ear Clipping Triangulation** (Godot-compatible). The tool analyzes sprite transparency to create optimized collision triangles and outputs both JSON collision data and visual preview images.
 
 ## Core Purpose
-**Input**: PNG sprite images with alpha transparency (from `input/` or `example/` folders)
+**Input**: PNG sprite images with alpha transparency (from `input/` folder)
 **Output**: 
-1. JSON array of triangle/polygon coordinates (see `example/1.json`)
-2. Preview image showing original sprite + collision polygon overlay (see `example/1.png`)
+1. JSON array of triangulated collision polygons (see `assets/examples/1.json`)
+2. Preview image showing original sprite + collision polygon overlay
 
 ## Architecture & Core Components
 
 ### Project Structure
-- `src/` - Main processing pipeline modules
-  - `image_processor.py` - PNG loading, alpha channel extraction, edge detection
+- `src/core/` - Main processing pipeline modules
+  - `image_processor.py` - PNG loading, alpha channel extraction, contour detection
   - `polygon_simplifier.py` - Douglas-Peucker algorithm, vertex reduction
-  - `collision_mapper.py` - Main collision generation pipeline
+  - `triangulator.py` - **Ear clipping triangulation (Godot-compatible)**
+  - `collision_mapper.py` - Main collision generation pipeline with triangulation
   - `preview_generator.py` - Visualization overlay creator
+- `src/` - Entry points and utilities
   - `cli.py` - Command-line batch processing interface
-- `geometry/` - 2D geometric utilities (Vector2D, polygon operations)
-- `utils/` - Helper functions (image I/O, JSON serialization)
+- `src/geometry/` - 2D geometric utilities (Vector2D, polygon operations)
+- `src/utils/` - Helper functions (image I/O, JSON serialization)
 - `input/` - Source PNG sprites for processing
 - `output/` - Generated JSON and preview images
   - `json/` - Collision polygon JSON files
   - `preview/` - Visual debug overlays
-- `example/` - Reference examples (base.png, base.json)
+- `assets/examples/` - Reference examples (1.json)
 - `tests/` - Unit tests for polygon algorithms
 
 
@@ -40,13 +42,23 @@ Based on `example/1.json`, the output format is:
 ```
 
 **Key specifications**:
-- **Top-level**: Array of polygons
+- **Top-level**: Array of triangles/polygons
 - **Each polygon**: Array of [x, y] coordinate pairs
 - **Coordinate system**: Pixel coordinates from top-left (0,0), matching PNG dimensions
-- **Vertex limit**: Each polygon can have 3-8 vertices maximum
-- **Multiple shapes**: Complex sprites decompose into multiple polygons (e.g., `base.json` has 80+ triangles)
-- **Precision**: Float coordinates (e.g., `587.1911764705883`) for sub-pixel accuracy
+- **Triangulation**: Uses **ear clipping algorithm** (same as Godot)
+- **No overflow**: Triangles guaranteed to stay within polygon boundaries
+- **Multiple triangles**: Complex sprites decompose into multiple triangles (e.g., star shape = 23 triangles)
+- **Precision**: Float coordinates (e.g., `139.0, 1.0`) for accuracy
 - **No metadata**: Pure coordinate data only - no object wrappers, IDs, or type labels
+
+**Example from assets/examples/1.json**:
+```json
+[
+  [[139.0,1.0],[108.0,7.0],[89.0,15.0]],
+  [[67.0,85.0],[49.0,144.0],[49.0,152.0]],
+  [[39.0,155.0],[32.0,162.0],[20.0,189.0]]
+]
+```
 
 **Example from base.json**:
 ```json
@@ -59,8 +71,8 @@ Based on `example/1.json`, the output format is:
 
 ### Key Design Patterns
 - **Batch Processing**: Process entire `input/` folder in one command
-- **Triangulation Focus**: Prefer triangles (3 vertices) for physics engine compatibility
-- **Convex Decomposition**: Split concave shapes into multiple convex polygons
+- **Ear Clipping Triangulation**: Same algorithm as Godot for consistency
+- **Boundary Preservation**: Triangles never extend outside polygon boundaries
 - **Visual Validation**: Always generate preview images for manual verification
 
 ## Development Guidelines
@@ -70,10 +82,9 @@ Based on `example/1.json`, the output format is:
 2. **Alpha Masking** → Threshold alpha channel (default: α > 128 = opaque)
 3. **Contour Detection** → `cv2.findContours()` to find sprite boundaries
 4. **Polygon Simplification** → Douglas-Peucker algorithm (`cv2.approxPolyDP()`)
-5. **Vertex Reduction** → Ensure each polygon has ≤8 vertices
-6. **Triangulation** → Convert complex polygons to triangles if needed
-7. **JSON Export** → Write pure coordinate array (no metadata)
-8. **Preview Generation** → Overlay polygons on original sprite using matplotlib
+5. **Ear Clipping Triangulation** → Convert polygon to triangles using earcut library
+6. **JSON Export** → Write pure coordinate array (no metadata)
+7. **Preview Generation** → Overlay polygons on original sprite using matplotlib
 
 ### Performance Considerations
 - Process 100 sprites (64x64) in <10 seconds
@@ -82,7 +93,7 @@ Based on `example/1.json`, the output format is:
 - Use NumPy arrays for coordinate transformations and batch operations
 
 ### Code Conventions
-- Use type hints: `def simplify_polygon(vertices: List[Tuple[float, float]], max_vertices: int) -> List[Tuple[float, float]]`
+- Use type hints: `def triangulate_polygon(vertices: List[Vector2D]) -> List[List[Vector2D]]`
 - **Coordinate system**: Top-left origin (0,0), +X right, +Y down (standard image coordinates)
 - **JSON format**: Pure nested arrays - NO objects, NO metadata, NO field names
 - **Vertex order**: Counter-clockwise winding for polygon vertices
@@ -91,7 +102,9 @@ Based on `example/1.json`, the output format is:
 ### Testing Strategy
 - Verify JSON output matches exact format: `[[[x,y],[x,y],...],...]`
 - Test edge cases: fully transparent, single pixel, line sprites, disconnected regions
-- Validate vertex count: all polygons have 3-8 vertices
+- Verify JSON output matches exact format: `[[[x,y],[x,y],...],...]`
+- Test edge cases: fully transparent, single pixel, line sprites, disconnected regions
+- Validate triangulation: all triangles stay within polygon boundaries
 - Check coverage: collision area covers ≥95% of opaque sprite pixels
 - Visual validation: preview images must clearly show polygon overlays
 
@@ -100,6 +113,9 @@ Based on `example/1.json`, the output format is:
 - `numpy` - Array operations, coordinate transformations
 - `Pillow` (PIL) - PNG loading with alpha channel support
 - `matplotlib` - Preview image generation with polygon overlays
+- `earcut` - Ear clipping triangulation (Godot-compatible)
+- `shapely` - Polygon geometric operations
+- `scipy` - Scientific computing utilities
 - `pytest` - Testing framework
 
 ### Common Workflows
@@ -111,35 +127,36 @@ python -m src.cli input/sprite.png
 python -m src.cli input/ --output-json output/json/ --output-preview output/preview/
 
 # Adjust parameters
-python -m src.cli input/ --alpha-threshold 100 --max-vertices 6 --epsilon 2.5
+python -m src.cli input/ --alpha-threshold 100 --epsilon 2.5
 
 # Run tests
 pytest tests/ -v
 
 # Check example reference
-# Input:  example/1.png
-# Output: example/1.json (80+ triangular polygons)
+# Input:  input/1.png
+# Output: assets/examples/1.json (23 triangles)
 ```
 
 ## AI Assistant Guidelines
 
 ### When working with polygon generation:
 1. **JSON format is strict**: Output must be pure nested arrays `[[[x,y],[x,y],...],...]` - NO objects, NO metadata
-2. **Vertex limits**: Each polygon MUST have 3-8 vertices. If shape is complex, split into multiple polygons
-3. **Coordinate precision**: Use float coordinates for sub-pixel accuracy (e.g., `587.1911764705883`)
-4. **Reference example**: Always check `example/1.json` and `example/1.png` for format validation
+2. **Triangulation**: Use ear clipping to ensure triangles stay within polygon boundaries
+3. **Coordinate precision**: Use float coordinates for accuracy (e.g., `139.0, 1.0`)
+4. **Reference example**: Always check `assets/examples/1.json` for format validation
 
 ### When implementing image processing:
 - Use `cv2.findContours()` with `RETR_EXTERNAL` to find outer boundaries only
 - Apply alpha threshold before contour detection (default: α > 128)
 - Handle sprites with multiple disconnected regions (create separate polygons for each)
-- Validate that generated polygons don't have self-intersections
+- Simplify contours with Douglas-Peucker before triangulation
 
 ### When debugging polygon issues:
 - Generate preview images to visually verify polygon placement
+- Ensure triangles don't extend outside polygon boundaries (no overflow)
+- Verify ear clipping triangulation produces correct results
 - Check vertex winding order (should be counter-clockwise)
 - Ensure polygons cover ≥95% of opaque sprite area
-- Verify total vertex count is minimized while maintaining accuracy
 - Test edge cases: fully transparent images, single-pixel sprites, thin lines
 
 ### Performance optimization focus areas:
@@ -147,3 +164,4 @@ pytest tests/ -v
 - Use NumPy vectorized operations for coordinate transformations
 - Cache contour detection results to avoid redundant processing
 - Optimize Douglas-Peucker epsilon parameter for speed vs accuracy balance
+- Use earcut for fast, accurate triangulation

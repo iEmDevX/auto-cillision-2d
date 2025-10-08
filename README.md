@@ -1,19 +1,20 @@
 # Python 2D Sprite Collision Polygon Generator
 
-🎮 Automated tool for generating collision polygon mappings from PNG sprite images.
+🎮 Automated tool for generating collision polygon mappings from PNG sprite images using **Ear Clipping Triangulation** (Godot-compatible).
 
 ## Overview
 
-This tool analyzes PNG sprite images with alpha transparency and automatically generates optimized collision shapes (triangles/polygons with ≤8 vertices per shape). Perfect for game development, physics engines, and 2D sprite collision detection.
+This tool analyzes PNG sprite images with alpha transparency and automatically generates optimized collision triangles using the **ear clipping algorithm** (same as Godot). Perfect for game development, physics engines, and 2D sprite collision detection with guaranteed boundary preservation.
 
 ### Features
 
+- ✅ **Ear Clipping Triangulation** - Same algorithm as Godot engine
+- ✅ **Boundary Preservation** - Triangles never extend outside polygon edges
 - ✅ Automatic collision polygon generation from PNG sprites
 - ✅ Support for complex shapes with multiple disconnected regions
-- ✅ Optimized output: 3-8 vertices per polygon
 - ✅ Visual preview generation for verification
 - ✅ Batch processing for multiple sprites
-- ✅ JSON output compatible with game engines
+- ✅ JSON output compatible with Godot and other game engines
 - ✅ Sub-pixel precision for accurate collision detection
 
 ## Installation
@@ -71,52 +72,55 @@ python -m src.cli input/ \
   --output-json output/json/ \
   --output-preview output/preview/ \
   --alpha-threshold 100 \
-  --max-vertices 6 \
   --epsilon 2.5
 ```
 
 **Parameters:**
 - `--alpha-threshold`: Alpha channel threshold (0-255, default: 128)
-- `--max-vertices`: Maximum vertices per polygon (3-8, default: 8)
-- `--epsilon`: Douglas-Peucker simplification epsilon (default: 2.0)
+- `--epsilon`: Douglas-Peucker simplification tolerance (default: 2.0)
+- Smaller epsilon = more detail, more triangles
+- Larger epsilon = simpler shapes, fewer triangles
 
 ## Output Format
 
 ### JSON Structure
 
-The output is a pure array of polygons, where each polygon is an array of `[x, y]` coordinates:
+The output is a pure array of triangulated polygons, where each polygon is an array of `[x, y]` coordinates:
 
 ```json
 [
-  [[0.0, 272.0], [6.0, 303.0], [10.0, 299.0]],
-  [[576.0, 822.0], [575.0, 897.0], [584.0, 1008.0]],
-  [[527.0, 581.0], [563.0, 628.0], [575.0, 637.0], [876.0, 946.0]]
+  [[139.0, 1.0], [163.0, 5.0], [169.0, 21.0]],
+  [[67.0, 85.0], [49.0, 144.0], [49.0, 152.0]],
+  [[39.0, 155.0], [32.0, 162.0], [20.0, 189.0]]
 ]
 ```
 
 **Key specifications:**
-- Top-level: Array of polygons
-- Each polygon: Array of [x, y] coordinate pairs
+- Top-level: Array of triangles
+- Each triangle: Array of 3 [x, y] coordinate pairs
 - Coordinate system: Pixel coordinates from top-left (0,0)
-- Vertex limit: 3-8 vertices per polygon
+- Triangulation: Ear clipping algorithm (Godot-compatible)
+- Boundary safe: Triangles never extend outside polygon boundaries
 - No metadata: Pure coordinate data only
 
-See `example/base.json` and `example/base.png` for reference.
+See `assets/examples/1.json` for reference (23 triangles for star shape).
 
 ## Project Structure
 
 ```
 py_auto_cillision_2d/
-├── src/                    # Main processing modules
-│   ├── __init__.py
-│   ├── image_processor.py  # PNG loading, alpha extraction
-│   ├── polygon_simplifier.py  # Douglas-Peucker algorithm
-│   ├── collision_mapper.py    # Main pipeline
-│   ├── preview_generator.py   # Visualization
+├── src/
+│   ├── core/                  # Core processing modules
+│   │   ├── image_processor.py    # PNG loading, contour detection
+│   │   ├── polygon_simplifier.py # Douglas-Peucker algorithm
+│   │   ├── triangulator.py       # Ear clipping triangulation
+│   │   ├── collision_mapper.py   # Main pipeline
+│   │   └── preview_generator.py  # Visualization
+│   ├── geometry/              # 2D geometric utilities
+│   │   └── vector2d.py
+│   ├── utils/                 # Helper functions
+│   │   └── json_writer.py
 │   └── cli.py                 # Command-line interface
-├── geometry/               # 2D geometric utilities
-│   ├── __init__.py
-│   ├── vector2d.py
 │   └── polygon.py
 ├── utils/                  # Helper functions
 │   ├── __init__.py
@@ -128,7 +132,12 @@ py_auto_cillision_2d/
 │   └── preview/           # Preview images
 ├── example/               # Reference examples
 │   ├── base.png
-│   └── base.json
+├── input/                 # Input PNG sprites
+├── output/                # Generated output
+│   ├── json/             # Collision JSON files
+│   └── preview/          # Preview images
+├── assets/examples/       # Reference examples
+│   └── 1.json
 ├── tests/                 # Unit tests
 ├── requirements.txt       # Dependencies
 ├── pyproject.toml        # Project configuration
@@ -141,10 +150,9 @@ py_auto_cillision_2d/
 2. **Alpha Masking** → Threshold alpha channel (default: α > 128 = opaque)
 3. **Contour Detection** → `cv2.findContours()` to find sprite boundaries
 4. **Polygon Simplification** → Douglas-Peucker algorithm (`cv2.approxPolyDP()`)
-5. **Vertex Reduction** → Ensure each polygon has ≤8 vertices
-6. **Triangulation** → Convert complex polygons to triangles if needed
-7. **JSON Export** → Write pure coordinate array
-8. **Preview Generation** → Overlay polygons on original sprite
+5. **Ear Clipping Triangulation** → Convert polygon to triangles (Godot algorithm)
+6. **JSON Export** → Write pure coordinate array
+7. **Preview Generation** → Overlay triangles on original sprite
 
 ## Development
 
@@ -187,20 +195,27 @@ mypy src/
 - **numpy** (≥1.24.0) - Array operations
 - **Pillow** (≥10.0.0) - PNG loading with alpha support
 - **matplotlib** (≥3.7.0) - Preview image generation
-- **shapely** (≥2.0.0) - Advanced polygon operations
+- **earcut** (≥1.1.5) - Ear clipping triangulation (Godot-compatible)
+- **shapely** (≥2.0.0) - Polygon geometric operations
+- **scipy** (≥1.10.0) - Scientific computing utilities
 - **pytest** (≥7.4.0) - Testing framework
 
 ## Examples
 
-Check the `example/` folder:
-- `base.png` - Sample sprite image
-- `base.json` - Generated collision polygons (80+ triangles)
+Check the `assets/examples/` folder:
+- `1.json` - Generated collision triangles (23 triangles for star shape)
+
+Example output for a star sprite with epsilon=2.5:
+- **Input**: 268x238 PNG sprite
+- **Output**: 23 triangles, 69 total vertices
+- **Algorithm**: Ear clipping (Godot-compatible)
 
 ## Performance
 
 - Process 100 sprites (64x64) in <10 seconds
 - Support sprites up to 2048x2048 pixels
-- Optimized vertex count while maintaining ≥95% sprite coverage
+- Ear clipping ensures triangles stay within boundaries
+- No triangle overflow beyond polygon edges
 
 ## Troubleshooting
 
@@ -209,11 +224,27 @@ Check the `example/` folder:
 **Issue**: "No contours found"
 - **Solution**: Check alpha threshold, your sprite might be fully transparent
 
-**Issue**: "Too many vertices"
-- **Solution**: Increase epsilon parameter or enable triangulation
+**Issue**: "Triangles extending outside polygon"
+- **Solution**: This should not happen with ear clipping. If it does, please report as bug.
+
+**Issue**: "Too many/few triangles"
+- **Solution**: Adjust epsilon parameter (smaller = more detail, larger = simpler shapes)
 
 **Issue**: "Preview image doesn't match sprite"
 - **Solution**: Check coordinate system, verify polygon winding order
+
+## Algorithm Compatibility
+
+This tool uses the **ear clipping triangulation algorithm**, which is the same algorithm used by:
+- ✅ Godot Engine (`Geometry2D.triangulate_polygon()`)
+- ✅ Most 2D physics engines
+- ✅ Game frameworks requiring triangulated collision shapes
+
+The triangulation ensures:
+- All triangles stay within polygon boundaries
+- No self-intersecting triangles
+- Counter-clockwise vertex ordering
+- Optimal triangle count for physics simulation
 
 ## License
 
