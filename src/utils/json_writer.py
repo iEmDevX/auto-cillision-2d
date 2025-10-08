@@ -58,7 +58,8 @@ def save_collision_json(
     # Write JSON file
     try:
         with open(filepath, 'w') as f:
-            json.dump(polygons, f, indent=indent)
+            # Use minimal separators for compact output (no spaces)
+            json.dump(polygons, f, indent=indent, separators=(',', ':'))
         
         logger.info(f"Saved collision JSON: {filepath} ({len(polygons)} polygons)")
         

@@ -46,13 +46,13 @@ def test_pillow_rgba():
 
 def test_example_files_exist():
     """Test that example files exist"""
-    assert os.path.exists('example/base.png')
-    assert os.path.exists('example/base.json')
+    assert os.path.exists('assets/examples/1.png')
+    assert os.path.exists('assets/examples/1.json')
 
 
 def test_example_json_format():
     """Test that example JSON has correct format"""
-    with open('example/base.json', 'r') as f:
+    with open('assets/examples/1.json', 'r') as f:
         data = json.load(f)
     
     # Should be a list
@@ -77,7 +77,7 @@ def test_example_json_format():
 
 def test_example_sprite_dimensions():
     """Test example sprite can be loaded"""
-    img = Image.open('example/base.png')
+    img = Image.open('assets/examples/1.png')
     assert img.mode == 'RGBA'
     assert img.size[0] > 0
     assert img.size[1] > 0

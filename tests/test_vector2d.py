@@ -4,7 +4,7 @@ Unit tests for Vector2D and geometry utilities.
 
 import pytest
 import math
-from geometry.vector2d import (
+from src.geometry.vector2d import (
     Vector2D,
     perpendicular_distance,
     polygon_area,

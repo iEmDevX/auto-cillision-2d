@@ -4,8 +4,8 @@ Unit tests for polygon simplifier.
 
 import pytest
 import numpy as np
-from src.polygon_simplifier import PolygonSimplifier, contour_to_polygon
-from geometry.vector2d import Vector2D
+from src.core.polygon_simplifier import PolygonSimplifier, contour_to_polygon
+from src.geometry.vector2d import Vector2D
 
 
 class TestPolygonSimplifier:
