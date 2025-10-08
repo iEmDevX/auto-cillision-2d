@@ -28,8 +28,7 @@ echo ""
 
 PS3="Select an option: "
 options=(
-    "Test Environment"
-    "Run Demo Visualization"
+    "Process Example Sprite"
     "Run Pytest Tests"
     "Show Package Versions"
     "View Example JSON"
@@ -41,18 +40,14 @@ options=(
 select opt in "${options[@]}"
 do
     case $opt in
-        "Test Environment")
+        "Process Example Sprite")
             echo ""
-            echo "🧪 Running environment test..."
-            python test_env.py
-            break
-            ;;
-        "Run Demo Visualization")
+            echo "🎮 Processing example sprite (input/1.png)..."
+            python -m src.cli input/1.png --epsilon 2.5
             echo ""
-            echo "🎨 Running demo visualization..."
-            python demo.py
-            echo ""
-            echo "📁 Output saved to: output/preview/demo_visualization.png"
+            echo "📁 Output saved to:"
+            echo "   - output/json/1.json"
+            echo "   - output/preview/1.png"
             break
             ;;
         "Run Pytest Tests")
@@ -64,16 +59,16 @@ do
         "Show Package Versions")
             echo ""
             echo "📦 Installed packages:"
-            pip list | grep -E "(opencv|numpy|Pillow|matplotlib|shapely|pytest|black|flake8|mypy)"
+            pip list | grep -E "(opencv|numpy|Pillow|matplotlib|shapely|pytest|earcut)"
             break
             ;;
         "View Example JSON")
             echo ""
-            echo "📄 Example JSON format (first 5 polygons):"
-            python -c "import json; data=json.load(open('data/examples/1.json')); print(json.dumps(data[:5], indent=2))"
+            echo "📄 Example JSON format (first 5 triangles):"
+            python -c "import json; data=json.load(open('assets/examples/1.json')); print(json.dumps(data[:5], indent=2))"
             echo "..."
             echo ""
-            echo "Total polygons: $(python -c "import json; print(len(json.load(open('data/examples/1.json'))))")"
+            echo "Total triangles: $(python -c "import json; print(len(json.load(open('assets/examples/1.json'))))")"
             break
             ;;
         "List Project Structure")
@@ -86,16 +81,16 @@ do
             echo ""
             echo "📚 Documentation files:"
             echo "  1. README.md - Project overview and usage"
-            echo "  2. DEVELOPMENT.md - Developer guide"
-            echo "  3. TEST_RESULTS.md - Test results summary"
+            echo "  2. docs/DEVELOPMENT.md - Developer guide"
+            echo "  3. docs/TEST_RESULTS.md - Test results summary"
             echo "  4. .github/copilot-instructions.md - AI assistant guide"
             echo ""
             read -p "Open which file? (1-4): " choice
             case $choice in
-                1) cat README.md | head -50 ;;
-                2) cat DEVELOPMENT.md | head -50 ;;
-                3) cat TEST_RESULTS.md ;;
-                4) cat .github/copilot-instructions.md | head -50 ;;
+                1) cat README.md | less ;;
+                2) cat docs/DEVELOPMENT.md | less ;;
+                3) cat docs/TEST_RESULTS.md | less ;;
+                4) cat .github/copilot-instructions.md | less ;;
                 *) echo "Invalid choice" ;;
             esac
             break
