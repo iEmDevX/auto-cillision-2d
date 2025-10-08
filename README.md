@@ -45,7 +45,7 @@ python -m src.cli input/sprite.png --epsilon 2.5
 
 **Input Sprite** (`input/1.png`):
 
-<img src="assets/examples/1.png" width="200" alt="Star sprite">
+<img src="assets/examples/1.png" width="400" alt="Star sprite">
 
 Star-shaped sprite (268×238 pixels)
 
@@ -64,7 +64,7 @@ Star-shaped sprite (268×238 pixels)
 
 **Visual Preview** (`output/preview/1.png`):
 
-<img src="assets/examples/output/preview/1.png" width="200" alt="Collision preview">
+<img src="assets/examples/output/preview/1.png" width="600" alt="Collision preview">
 
 *Green outlines show generated collision triangles*
 
