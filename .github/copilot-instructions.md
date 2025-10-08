@@ -6,8 +6,8 @@ Automated tool for generating collision polygon mappings from PNG sprite images.
 ## Core Purpose
 **Input**: PNG sprite images with alpha transparency (from `input/` or `example/` folders)
 **Output**: 
-1. JSON array of triangle/polygon coordinates (see `example/base.json`)
-2. Preview image showing original sprite + collision polygon overlay (see `example/base.png`)
+1. JSON array of triangle/polygon coordinates (see `example/1.json`)
+2. Preview image showing original sprite + collision polygon overlay (see `example/1.png`)
 
 ## Architecture & Core Components
 
@@ -30,7 +30,7 @@ Automated tool for generating collision polygon mappings from PNG sprite images.
 
 ## JSON Output Format (Critical)
 
-Based on `example/base.json`, the output format is:
+Based on `example/1.json`, the output format is:
 ```json
 [
   [[x1, y1], [x2, y2], [x3, y3]],           // Triangle (3 vertices)
@@ -117,8 +117,8 @@ python -m src.cli input/ --alpha-threshold 100 --max-vertices 6 --epsilon 2.5
 pytest tests/ -v
 
 # Check example reference
-# Input:  example/base.png
-# Output: example/base.json (80+ triangular polygons)
+# Input:  example/1.png
+# Output: example/1.json (80+ triangular polygons)
 ```
 
 ## AI Assistant Guidelines
@@ -127,7 +127,7 @@ pytest tests/ -v
 1. **JSON format is strict**: Output must be pure nested arrays `[[[x,y],[x,y],...],...]` - NO objects, NO metadata
 2. **Vertex limits**: Each polygon MUST have 3-8 vertices. If shape is complex, split into multiple polygons
 3. **Coordinate precision**: Use float coordinates for sub-pixel accuracy (e.g., `587.1911764705883`)
-4. **Reference example**: Always check `example/base.json` and `example/base.png` for format validation
+4. **Reference example**: Always check `example/1.json` and `example/1.png` for format validation
 
 ### When implementing image processing:
 - Use `cv2.findContours()` with `RETR_EXTERNAL` to find outer boundaries only

@@ -98,3 +98,6 @@ def load_collision_json(filepath: str) -> List[List[List[float]]]:
     logger.info(f"Loaded collision JSON: {filepath} ({len(data)} polygons)")
     
     return data
+
+
+from typing import Optional

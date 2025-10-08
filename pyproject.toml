@@ -43,7 +43,7 @@ dev = [
 ]
 
 [project.scripts]
-collision-gen = "src.cli:main"
+collision-gen = "collision_generator.cli:main"
 
 [tool.black]
 line-length = 100
@@ -53,7 +53,7 @@ target-version = ['py38', 'py39', 'py310', 'py311']
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
-addopts = "-v --cov=src --cov-report=term-missing"
+addopts = "-v --cov=collision_generator --cov-report=term-missing"
 
 [tool.mypy]
 python_version = "3.8"

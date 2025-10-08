@@ -5,11 +5,9 @@ Main collision polygon generation pipeline.
 from typing import List, Dict, Any, Optional
 from pathlib import Path
 import logging
-import cv2
-import numpy as np
-from geometry.vector2d import Vector2D
-from src.image_processor import ImageProcessor
-from src.polygon_simplifier import PolygonSimplifier
+from src.geometry.vector2d import Vector2D
+from src.core.image_processor import ImageProcessor
+from src.core.polygon_simplifier import PolygonSimplifier
 
 logger = logging.getLogger(__name__)
 
@@ -77,25 +75,16 @@ class CollisionMapper:
         
         for i, contour in enumerate(contours):
             try:
-                # First, do light simplification to reduce point count
-                # but preserve shape detail for triangulation
-                light_epsilon = self.polygon_simplifier.epsilon / 2.0
-                contour_array = np.array(contour).reshape(-1, 2)
-                light_simplified = cv2.approxPolyDP(
-                    contour,
-                    light_epsilon,
-                    closed=True
-                )
+                # Simplify contour to polygon
+                vertices = self.polygon_simplifier.simplify_contour(contour)
                 
-                if len(light_simplified) < 3:
-                    logger.warning(f"Contour {i} too small after simplification")
+                # Merge close vertices
+                vertices = self.polygon_simplifier.merge_close_vertices(vertices)
+                
+                # Validate polygon
+                if not self.polygon_simplifier.validate_polygon(vertices):
+                    logger.warning(f"Contour {i} failed validation, skipping")
                     continue
-                
-                # Convert to Vector2D list
-                vertices = [
-                    Vector2D(float(pt[0][0]), float(pt[0][1]))
-                    for pt in light_simplified
-                ]
                 
                 # Check area
                 from geometry.vector2d import polygon_area
@@ -106,17 +95,8 @@ class CollisionMapper:
                     )
                     continue
                 
-                # If polygon is simple enough, keep it as-is (up to max_vertices)
-                if len(vertices) <= self.polygon_simplifier.max_vertices:
-                    # Merge close vertices
-                    vertices = self.polygon_simplifier.merge_close_vertices(vertices)
-                    if self.polygon_simplifier.validate_polygon(vertices):
-                        polygon_data = [v.to_list() for v in vertices]
-                        all_polygons.append(polygon_data)
-                    else:
-                        logger.warning(f"Contour {i} failed validation, skipping")
-                else:
-                    # Complex polygon - split into triangles
+                # If polygon has > max_vertices, split into triangles
+                if len(vertices) > self.polygon_simplifier.max_vertices:
                     logger.info(
                         f"Polygon {i} has {len(vertices)} vertices, "
                         f"splitting into triangles"
@@ -124,12 +104,12 @@ class CollisionMapper:
                     triangles = self.polygon_simplifier.split_into_triangles(vertices)
                     
                     for triangle in triangles:
-                        # Validate each triangle
-                        if self.polygon_simplifier.validate_polygon(triangle):
-                            polygon_data = [v.to_list() for v in triangle]
-                            all_polygons.append(polygon_data)
-                        else:
-                            logger.debug(f"Triangle validation failed, skipping")
+                        polygon_data = [v.to_list() for v in triangle]
+                        all_polygons.append(polygon_data)
+                else:
+                    # Convert vertices to list format
+                    polygon_data = [v.to_list() for v in vertices]
+                    all_polygons.append(polygon_data)
                 
             except Exception as e:
                 logger.error(f"Failed to process contour {i}: {e}", exc_info=True)

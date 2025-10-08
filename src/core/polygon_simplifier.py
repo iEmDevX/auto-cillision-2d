@@ -6,7 +6,7 @@ from typing import List, Tuple
 import numpy as np
 import cv2
 import logging
-from geometry.vector2d import Vector2D, perpendicular_distance
+from src.geometry.vector2d import Vector2D, perpendicular_distance
 
 logger = logging.getLogger(__name__)
 

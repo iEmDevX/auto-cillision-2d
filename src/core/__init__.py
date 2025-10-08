@@ -1,10 +1,4 @@
-"""
-Python 2D Sprite Collision Polygon Generator
-
-Automated tool for generating collision polygon mappings from PNG sprite images.
-"""
-
-__version__ = "1.0.0"
+"""Core collision polygon generation modules."""
 
 from src.core.collision_mapper import CollisionMapper
 from src.core.image_processor import ImageProcessor
